@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tunnel — direct browser-to-browser sharing</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">&gt;_</span>
+    <span class="brand-name">tunnel</span>
+  </div>
+  <div id="status-indicator" class="status status-idle" hidden>
+    <span class="status-dot"></span>
+    <span class="status-text">Idle</span>
+  </div>
+</header>
+
+<main id="app">
+
+  <!-- ============ UNSUPPORTED BROWSER BANNER ============ -->
+  <div id="unsupported-banner" class="banner banner-error" hidden>
+    Your browser does not support WebRTC data channels, which Tunnel requires.
+    Please use a recent version of Chrome, Firefox, Edge, or Safari.
+  </div>
+
+  <!-- ============ HOME VIEW ============ -->
+  <section id="view-home" class="view">
+    <div class="intro">
+      <h1>Tunnel</h1>
+      <p>Connect two browsers directly with a short PIN. No accounts, no uploads —
+      messages and files travel straight from one device to the other.</p>
+    </div>
+
+    <div id="home-error" class="banner banner-error" hidden></div>
+
+    <div class="panel">
+      <div class="panel-block">
+        <h2>Start a tunnel</h2>
+        <p class="muted">Generates a one-time PIN. Share it with the other person.</p>
+        <button id="btn-create" class="btn btn-primary">Create Tunnel</button>
+      </div>
+
+      <div class="divider"><span>or</span></div>
+
+      <div class="panel-block">
+        <h2>Join a tunnel</h2>
+        <p class="muted">Enter the PIN you were given.</p>
+        <form id="form-join" autocomplete="off">
+          <input id="input-pin" class="pin-input" type="text" inputmode="numeric"
+                 pattern="[0-9]*" maxlength="6" placeholder="000000" aria-label="Tunnel PIN">
+          <button id="btn-join" type="submit" class="btn">Join Tunnel</button>
+        </form>
+      </div>
+    </div>
+
+    <p class="fineprint">
+      Tunnel relays only the minimum signaling data needed to connect two browsers.
+      Once connected, chat and files travel directly between them over WebRTC —
+      not through this server. This is not an anonymity tool, and on some restrictive
+      networks a direct connection may not be possible. See the notes at the bottom
+      of the project README.
+    </p>
+  </section>
+
+  <!-- ============ WAITING VIEW ============ -->
+  <section id="view-waiting" class="view" hidden>
+    <div class="pin-display">
+      <p class="muted">Share this PIN with the other person</p>
+      <div class="pin-box">
+        <span id="pin-value">------</span>
+        <button id="btn-copy-pin" class="btn btn-small" title="Copy PIN">Copy</button>
+      </div>
+      <p id="waiting-message" class="muted waiting-message">Waiting for peer to join…</p>
+    </div>
+    <button id="btn-cancel-waiting" class="btn btn-ghost">Cancel</button>
+  </section>
+
+  <!-- ============ CHAT / ROOM VIEW ============ -->
+  <section id="view-room" class="view view-room" hidden>
+
+    <div class="room-header">
+      <div class="room-header-left">
+        <span class="muted">PIN</span>
+        <strong id="room-pin-label">------</strong>
+      </div>
+      <button id="btn-end" class="btn btn-danger btn-small">End Tunnel</button>
+    </div>
+
+    <div id="messages" class="messages" aria-live="polite"></div>
+
+    <div id="transfers" class="transfers" hidden></div>
+
+    <form id="form-send" class="composer">
+      <input type="file" id="file-input" multiple hidden>
+      <button type="button" id="btn-attach" class="btn btn-icon" title="Send a file">＋</button>
+      <input id="input-message" class="text-input" type="text"
+             placeholder="Type a message…" autocomplete="off" disabled>
+      <button type="submit" id="btn-send-text" class="btn btn-primary" disabled>Send</button>
+    </form>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <span>Peer-to-peer over WebRTC. No accounts. No permanent storage.</span>
+</footer>
+
+<template id="tpl-message">
+  <div class="message">
+    <div class="message-meta">
+      <span class="message-author"></span>
+      <span class="message-time"></span>
+    </div>
+    <div class="message-text"></div>
+  </div>
+</template>
+
+<template id="tpl-transfer">
+  <div class="transfer">
+    <div class="transfer-row">
+      <span class="transfer-icon"></span>
+      <div class="transfer-info">
+        <div class="transfer-name"></div>
+        <div class="transfer-meta"></div>
+      </div>
+      <button class="btn btn-small btn-ghost transfer-cancel">Cancel</button>
+      <a class="btn btn-small transfer-download" hidden download>Download</a>
+    </div>
+    <div class="progress">
+      <div class="progress-bar"></div>
+    </div>
+    <img class="transfer-preview" hidden alt="">
+  </div>
+</template>
+
+<script src="app.js"></script>
+</body>
+</html>
