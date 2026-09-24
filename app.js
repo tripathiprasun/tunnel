@@ -6,12 +6,30 @@
 
 const SIGNALING_SERVER_URL = "wss://server-1-n1sw.onrender.com";
 
-// STUN helps peers discover their public address. Add TURN servers here if
-// you need reliable connectivity across restrictive NATs/firewalls. This
-// project does not run its own TURN server.
+// STUN helps peers discover their public address, but STUN alone only
+// works when at least one side is on a permissive NAT/firewall. On real
+// mobile networks, corporate networks, and many home routers (symmetric
+// NAT / carrier-grade NAT), a direct connection cannot be established at
+// all without a TURN server relaying the traffic. This is the classic
+// cause of "works between two tabs on my machine or same Wi-Fi, but fails
+// between two different networks" - which is expected with STUN-only
+// config. There is no way around this without a TURN server; add one below
+// to make Tunnel work reliably across arbitrary networks.
+//
+// To get free TURN credentials:
+//   1. Go to metered.ca/stun-turn (or similar - "Xirsys" and "Twilio NTS"
+//      also have free tiers) and create a free account.
+//   2. Generate a credential; it gives you a ready-made iceServers array
+//      with your own username/credential pair.
+//   3. Paste that array's TURN entries below, alongside the STUN entry.
+// Free tiers are usage-capped (e.g. 20 GB/month) but are plenty for
+// personal use. Publicly-shared demo credentials (like the old
+// "openrelayproject/openrelayproject" pair some tutorials use) are not
+// reliable anymore, providers have locked those down, so use your own.
 const ICE_SERVERS = [
   { urls: "stun:stun.l.google.com:19302" },
-  // { urls: "turn:your-turn-server.example.com:3478", username: "user", credential: "pass" },
+  // { urls: "turn:YOUR_TURN_HOST:80", username: "YOUR_USERNAME", credential: "YOUR_CREDENTIAL" },
+  // { urls: "turn:YOUR_TURN_HOST:443?transport=tcp", username: "YOUR_USERNAME", credential: "YOUR_CREDENTIAL" },
 ];
 
 const CHUNK_SIZE = 16 * 1024;             // 16 KiB per data-channel message
