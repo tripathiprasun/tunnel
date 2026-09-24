@@ -7,7 +7,7 @@
 const SIGNALING_SERVER_URL = "wss://server-1-n1sw.onrender.com";
 
 // STUN helps peers discover their public address. Add TURN servers here if
-// you need reliable connectivity across restrictive NATs/firewalls — this
+// you need reliable connectivity across restrictive NATs/firewalls. This
 // project does not run its own TURN server.
 const ICE_SERVERS = [
   { urls: "stun:stun.l.google.com:19302" },
@@ -98,6 +98,13 @@ function showView(view) {
   el.viewHome.hidden = view !== "home";
   el.viewWaiting.hidden = view !== "waiting";
   el.viewRoom.hidden = view !== "room";
+}
+
+// Are we currently in the middle of (or already inside) a tunnel session?
+// Used to stop the home screen's Create/Join actions from firing again
+// once a session has already started.
+function inActiveSession() {
+  return !!state.role || !el.viewWaiting.hidden || !el.viewRoom.hidden;
 }
 
 function setStatus(status, label) {
@@ -199,7 +206,7 @@ async function onSignalingMessage(event) {
 
     case "peer-joined":
       // We are the initiator; the other side just joined our room.
-      el.waitingMessage.textContent = "Peer found \u2014 connecting\u2026";
+      el.waitingMessage.textContent = "Peer found, connecting\u2026";
       enterRoom();
       setStatus("negotiating", "Negotiating\u2026");
       await startWebRTC(true);
@@ -240,7 +247,7 @@ function handleSignalingError(message) {
     resetHomeErrorSoon();
   }
   if (!el.viewWaiting.hidden) {
-    // e.g. tried to create while already in a room — return home
+    // e.g. tried to create while already in a room, so return home
     showView("home");
     setStatus("idle", "Idle");
   }
@@ -255,8 +262,13 @@ function formatPin(pin) {
    ========================================================================= */
 
 el.btnCreate.addEventListener("click", async () => {
+  // Guard: ignore if a session is already starting/active (e.g. the user
+  // is already in the waiting room or in a live chat).
+  if (inActiveSession()) return;
+
   showHomeError("");
   el.btnCreate.disabled = true;
+  el.btnJoin.disabled = true;
   try {
     await connectSignaling();
     sendSignal({ type: "create" });
@@ -265,11 +277,14 @@ el.btnCreate.addEventListener("click", async () => {
     resetHomeErrorSoon();
   } finally {
     el.btnCreate.disabled = false;
+    el.btnJoin.disabled = false;
   }
 });
 
 el.formJoin.addEventListener("submit", async (e) => {
   e.preventDefault();
+  if (inActiveSession()) return;
+
   const pin = el.inputPin.value.trim();
   if (!/^[0-9]{6}$/.test(pin)) {
     showHomeError("Enter the 6-digit PIN exactly as it was given to you.");
@@ -278,6 +293,7 @@ el.formJoin.addEventListener("submit", async (e) => {
   }
   showHomeError("");
   el.btnJoin.disabled = true;
+  el.btnCreate.disabled = true;
   try {
     await connectSignaling();
     sendSignal({ type: "join", room: pin });
@@ -286,6 +302,7 @@ el.formJoin.addEventListener("submit", async (e) => {
     resetHomeErrorSoon();
   } finally {
     el.btnJoin.disabled = false;
+    el.btnCreate.disabled = false;
   }
 });
 
@@ -296,7 +313,7 @@ el.btnCopyPin.addEventListener("click", async () => {
     el.btnCopyPin.textContent = "Copied";
     setTimeout(() => (el.btnCopyPin.textContent = "Copy"), 1500);
   } catch {
-    // Clipboard API unavailable — fall back silently, PIN is visible anyway.
+    // Clipboard API unavailable, fall back silently (PIN is visible anyway).
   }
 });
 
@@ -315,6 +332,15 @@ function enterRoom() {
   el.messages.innerHTML = "";
   el.transfers.innerHTML = "";
   el.transfers.hidden = true;
+
+  // The room view is its own scroll container (see CSS), but make sure the
+  // outer page itself is scrolled to the top so the composer at the bottom
+  // of the room view is on-screen immediately, with no hunting required.
+  window.scrollTo(0, 0);
+
+  // Focus the message box so the person can start typing the moment the
+  // data channel opens (it's enabled in setupDataChannel's onopen handler).
+  el.inputMessage.focus();
 }
 
 /* =========================================================================
@@ -421,6 +447,7 @@ function setupDataChannel(channel) {
     el.inputMessage.disabled = false;
     el.btnSendText.disabled = false;
     addSystemMessage("Connected. Messages and files now travel directly between your browsers.");
+    el.inputMessage.focus();
   };
 
   channel.onclose = () => {
@@ -575,7 +602,7 @@ function formatTime(ts) {
 }
 
 /* =========================================================================
-   FILE TRANSFER — SENDING
+   FILE TRANSFER: SENDING
    ========================================================================= */
 
 el.btnAttach.addEventListener("click", () => el.fileInput.click());
@@ -669,7 +696,7 @@ function waitForBufferSpace() {
 }
 
 /* =========================================================================
-   FILE TRANSFER — RECEIVING
+   FILE TRANSFER: RECEIVING
    ========================================================================= */
 
 function beginIncomingTransfer(meta) {
@@ -686,7 +713,7 @@ function beginIncomingTransfer(meta) {
 
 function handleIncomingChunk(data) {
   const t = state.incoming;
-  if (!t) return; // stray chunk with no active metadata — ignore defensively
+  if (!t) return; // stray chunk with no active metadata, ignore defensively
   t.chunks.push(data);
   t.received += data.byteLength;
   updateTransferProgress(t.id, t.received, t.size);
@@ -704,7 +731,7 @@ function completeIncomingTransfer(id) {
     return;
   }
   if (blob.size !== t.size) {
-    // Not fatal — surface as a soft warning but still offer the download.
+    // Not fatal, surface as a soft warning but still offer the download.
     console.warn(`Received size (${blob.size}) does not match announced size (${t.size}) for ${t.name}`);
   }
   const url = URL.createObjectURL(blob);
@@ -766,7 +793,7 @@ function markTransferComplete(id, fileInfo, objectUrl) {
   const t = state.transferEls.get(id);
   if (!t) return;
   t.bar.style.width = "100%";
-  t.meta.textContent = `${formatBytes(fileInfo.size)} \u2014 complete`;
+  t.meta.textContent = `${formatBytes(fileInfo.size)} - complete`;
   t.cancelBtn.hidden = true;
 
   if (objectUrl) {

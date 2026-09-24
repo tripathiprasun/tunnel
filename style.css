@@ -1,5 +1,5 @@
 /* ---------------------------------------------------------------
-   Tunnel — a small, plain utility. Restrained visual language:
+   Tunnel: a small, plain utility. Restrained visual language:
    flat, bordered, one accent color, minimal motion.
    --------------------------------------------------------------- */
 
@@ -36,6 +36,19 @@
 
 * { box-sizing: border-box; }
 
+/* -----------------------------------------------------------------
+   IMPORTANT: restore native [hidden] behavior.
+   Without this, the .view { display: flex } rule below has equal
+   specificity to the browser's built-in [hidden] { display: none }
+   rule, and author CSS always wins ties over the user-agent
+   stylesheet, so "hidden" views kept rendering on top of each
+   other (home, waiting, and room all visible at once). This single
+   rule is the actual fix for that.
+   ----------------------------------------------------------------- */
+[hidden] {
+  display: none !important;
+}
+
 html, body {
   height: 100%;
 }
@@ -68,6 +81,7 @@ h1, h2 {
   padding: 14px 20px;
   border-bottom: 1px solid var(--border);
   background: var(--panel);
+  flex-shrink: 0;
 }
 
 .brand {
@@ -231,9 +245,11 @@ h1, h2 {
 /* ---------- waiting view ---------- */
 
 #view-waiting {
+  flex: 1;
   align-items: center;
+  justify-content: center;
   text-align: center;
-  padding-top: 40px;
+  padding: 40px 0;
   gap: 24px;
 }
 
@@ -266,7 +282,7 @@ h1, h2 {
 
 .view-room {
   flex: 1;
-  min-height: 0;
+  min-height: 0; /* required so .messages can actually scroll instead of pushing the page */
 }
 
 .room-header {
@@ -277,6 +293,7 @@ h1, h2 {
   border-bottom: 1px solid var(--border);
   font-family: var(--mono);
   font-size: 13px;
+  flex-shrink: 0;
 }
 
 .room-header-left { display: flex; gap: 8px; align-items: baseline; }
@@ -337,6 +354,9 @@ h1, h2 {
   padding: 10px 0;
   border-top: 1px solid var(--border);
   margin-top: 6px;
+  flex-shrink: 0;
+  max-height: 40vh;
+  overflow-y: auto;
 }
 
 .transfer {
@@ -405,6 +425,7 @@ h1, h2 {
   align-items: center;
   padding-top: 12px;
   border-top: 1px solid var(--border);
+  flex-shrink: 0; /* stays pinned at the bottom of the room view, never scrolls away */
 }
 
 .text-input {
@@ -443,6 +464,9 @@ h1, h2 {
   color: var(--muted);
   padding: 14px 20px 20px;
   font-family: var(--mono);
+  flex-shrink: 0;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
 }
 
 /* ---------- responsive ---------- */
